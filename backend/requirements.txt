@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+openai
+supabase
+qdrant-client
+firecrawl
+httpx
+python-dotenv
+pydantic
+apscheduler
+agentscope

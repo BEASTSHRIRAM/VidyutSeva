@@ -1,0 +1,1 @@
+# VidyutSeva Qdrant Package
