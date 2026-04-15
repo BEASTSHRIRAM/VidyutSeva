@@ -1,16 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import { getAreaStatus } from '../api';
+import { getAreaStatus, getLiveOutages } from '../api';
 
 // Bangalore center coordinates
 const BANGALORE_CENTER = [12.9716, 77.5946];
 const ZOOM = 12;
 
 const STATUS_COLORS = {
-  outage: '#b53333',
-  warning: '#c96442',
-  normal: '#4a7c59',
+  outage: '#f87171', // Brighter red for dark mode
+  warning: '#fbbf24', // Amber
+  normal: '#10b981', // Emerald
+  report: '#60a5fa', // Bright Blue
 };
 
 const STATUS_RADIUS = {
@@ -21,6 +22,7 @@ const STATUS_RADIUS = {
 
 export default function LiveHeatmap() {
   const [areas, setAreas] = useState([]);
+  const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -31,10 +33,14 @@ export default function LiveHeatmap() {
 
   async function loadAreas() {
     try {
-      const data = await getAreaStatus();
-      setAreas(data);
+      const [areasData, liveData] = await Promise.all([
+        getAreaStatus(),
+        getLiveOutages()
+      ]);
+      setAreas(areasData);
+      setReports(liveData.crowd_reports || []);
     } catch (err) {
-      console.error('Failed to load area status:', err);
+      console.error('Failed to load map data:', err);
     } finally {
       setLoading(false);
     }
@@ -52,23 +58,29 @@ export default function LiveHeatmap() {
           <span className="panel-icon">M</span>
           Live Outage Map
         </div>
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: 'var(--stone-gray)' }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: STATUS_COLORS.normal, display: 'inline-block' }} />
-            Normal
-          </span>
-          <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: 'var(--stone-gray)' }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: STATUS_COLORS.warning, display: 'inline-block' }} />
-            Warning
-          </span>
-          <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: 'var(--stone-gray)' }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: STATUS_COLORS.outage, display: 'inline-block' }} />
-            Outage
-          </span>
-        </div>
       </div>
 
       <div className="map-container">
+        {/* Map Legend Overlay */}
+        <div className="map-legend-glass">
+          <div className="legend-item">
+            <span className="legend-dot" style={{ background: STATUS_COLORS.normal }} />
+            Normal
+          </div>
+          <div className="legend-item">
+            <span className="legend-dot" style={{ background: STATUS_COLORS.warning }} />
+            Warning
+          </div>
+          <div className="legend-item">
+            <span className="legend-dot" style={{ background: STATUS_COLORS.outage }} />
+            Outage
+          </div>
+          <div className="legend-item">
+            <span className="legend-dot" style={{ background: STATUS_COLORS.report }} />
+            X Reports
+          </div>
+        </div>
+
         {loading ? (
           <div className="empty-state" style={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
             <p>Loading map data...</p>
@@ -81,19 +93,31 @@ export default function LiveHeatmap() {
             style={{ height: '100%', width: '100%' }}
           >
             <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+              url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
             />
             {mappableAreas.map((area) => (
-              <CircleMarker
-                key={area.id || area.name}
-                center={[area.latitude, area.longitude]}
-                radius={STATUS_RADIUS[area.status] || 8}
-                fillColor={STATUS_COLORS[area.status] || STATUS_COLORS.normal}
-                fillOpacity={area.status === 'outage' ? 0.7 : 0.5}
-                color={STATUS_COLORS[area.status] || STATUS_COLORS.normal}
-                weight={2}
-              >
+              <Fragment key={area.id || area.name}>
+                {/* Heat Glow Layer (only for active outages) */}
+                {area.status === 'outage' && (
+                  <CircleMarker
+                    center={[area.latitude, area.longitude]}
+                    radius={STATUS_RADIUS.outage * 2}
+                    fillColor={STATUS_COLORS.outage}
+                    fillOpacity={0.15}
+                    stroke={false}
+                    pathOptions={{ interactive: false }}
+                  />
+                )}
+                <CircleMarker
+                  center={[area.latitude, area.longitude]}
+                  radius={STATUS_RADIUS[area.status] || 8}
+                  fillColor={STATUS_COLORS[area.status] || STATUS_COLORS.normal}
+                  fillOpacity={area.status === 'outage' ? 0.8 : 0.6}
+                  color={area.status === 'outage' ? '#ffffff' : (STATUS_COLORS[area.status] || STATUS_COLORS.normal)}
+                  weight={area.status === 'outage' ? 2 : 1}
+                  pathOptions={{ className: area.status === 'outage' ? 'outage-marker-pulse' : '' }}
+                >
                 <Popup>
                   <div>
                     <strong style={{ fontSize: '14px' }}>{area.name}</strong>
@@ -118,7 +142,43 @@ export default function LiveHeatmap() {
                   </div>
                 </Popup>
               </CircleMarker>
+                </Fragment>
             ))}
+
+            {/* Render Crowd Reports (Twitter) as small glowing markers offset slightly */}
+            {reports.map((report, idx) => {
+              const matchedArea = mappableAreas.find(a => a.name.toLowerCase() === report.area_name.toLowerCase());
+              if (!matchedArea) return null;
+              
+              // Slight offset so they don't exactly overlap the main area marker
+              const lat = matchedArea.latitude + (Math.random() * 0.006 - 0.003);
+              const lng = matchedArea.longitude + (Math.random() * 0.006 - 0.003);
+              
+              return (
+                <CircleMarker
+                  key={`report-${idx}`}
+                  center={[lat, lng]}
+                  radius={5}
+                  fillColor={STATUS_COLORS.report}
+                  fillOpacity={0.8}
+                  color="#ffffff"
+                  weight={1}
+                  pathOptions={{ className: 'report-marker-pulse' }}
+                >
+                  <Popup>
+                    <div>
+                      <strong style={{ fontSize: '13px', color: STATUS_COLORS.report }}>
+                        X/Twitter Report ({report.area_name})
+                      </strong>
+                      <br />
+                      <span style={{ fontSize: '12px', color: '#5e5d59' }}>
+                        {report.description}
+                      </span>
+                    </div>
+                  </Popup>
+                </CircleMarker>
+              );
+            })}
           </MapContainer>
         )}
       </div>

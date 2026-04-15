@@ -35,3 +35,16 @@ htmlcov/
 .DS_Store
 Thumbs.db
 schema.sql
+
+# Agent & AI metadata
+.agents/
+.kiro/
+.qwen/
+.gemini/
+
+# Temporary and local state
+backend/scraper/.twitter_rapidapi_state.json
+backend/scraper/test_*.py
+backend/.python-version
+uv.lock
+skills-lock.json

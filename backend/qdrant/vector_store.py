@@ -7,7 +7,7 @@ Uses OpenAI text-embedding-3-small (1536-dim).
 import os
 import uuid
 from dotenv import load_dotenv
-from openai import OpenAI
+import httpx
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
     Distance,
@@ -20,8 +20,8 @@ from qdrant_client.models import (
 
 load_dotenv()
 
-EMBEDDING_MODEL = "text-embedding-3-small"
-EMBEDDING_DIM = 1536
+EMBEDDING_MODEL = "models/gemini-embedding-001"
+EMBEDDING_DIM = 768
 
 COLLECTIONS = [
     "outage_history",
@@ -31,7 +31,6 @@ COLLECTIONS = [
 ]
 
 _qdrant: QdrantClient | None = None
-_openai: OpenAI | None = None
 
 
 def _get_qdrant() -> QdrantClient:
@@ -43,13 +42,6 @@ def _get_qdrant() -> QdrantClient:
             raise RuntimeError("QDRANT_URL must be set in .env")
         _qdrant = QdrantClient(url=url, api_key=api_key)
     return _qdrant
-
-
-def _get_openai() -> OpenAI:
-    global _openai
-    if _openai is None:
-        _openai = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-    return _openai
 
 
 # ---------------------------------------------------------------------------
@@ -78,10 +70,22 @@ def init_collections() -> None:
 # ---------------------------------------------------------------------------
 
 def embed_text(text: str) -> list[float]:
-    """Generate embedding vector for text via OpenAI."""
-    client = _get_openai()
-    resp = client.embeddings.create(input=text, model=EMBEDDING_MODEL)
-    return resp.data[0].embedding
+    """Generate embedding vector for text via Gemini."""
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        raise RuntimeError("GEMINI_API_KEY must be set in .env")
+        
+    url = f"https://generativelanguage.googleapis.com/v1beta/{EMBEDDING_MODEL}:embedContent?key={api_key}"
+    payload = {
+        "model": EMBEDDING_MODEL, 
+        "outputDimensionality": EMBEDDING_DIM,
+        "content": {"parts": [{"text": text}]}
+    }
+    
+    with httpx.Client() as client:
+        resp = client.post(url, json=payload, timeout=10.0)
+        resp.raise_for_status()
+        return resp.json()["embedding"]["values"]
 
 
 # ---------------------------------------------------------------------------
@@ -190,11 +194,12 @@ def embed_crowd_report(report: dict) -> str:
 def search_similar_outages(query: str, limit: int = 5) -> list[dict]:
     """Semantic search in outage_history."""
     vector = embed_text(query)
-    results = _get_qdrant().search(
+    response = _get_qdrant().query_points(
         collection_name="outage_history",
-        query_vector=vector,
+        query=vector,
         limit=limit,
     )
+    results = response.points
     return [
         {"score": r.score, **r.payload}
         for r in results
@@ -204,11 +209,12 @@ def search_similar_outages(query: str, limit: int = 5) -> list[dict]:
 def search_call_history(query: str, limit: int = 3) -> list[dict]:
     """Semantic search in call_memory."""
     vector = embed_text(query)
-    results = _get_qdrant().search(
+    response = _get_qdrant().query_points(
         collection_name="call_memory",
-        query_vector=vector,
+        query=vector,
         limit=limit,
     )
+    results = response.points
     return [
         {"score": r.score, **r.payload}
         for r in results
@@ -218,11 +224,12 @@ def search_call_history(query: str, limit: int = 3) -> list[dict]:
 def search_knowledge(query: str, limit: int = 3) -> list[dict]:
     """RAG search in bescom_knowledge."""
     vector = embed_text(query)
-    results = _get_qdrant().search(
+    response = _get_qdrant().query_points(
         collection_name="bescom_knowledge",
-        query_vector=vector,
+        query=vector,
         limit=limit,
     )
+    results = response.points
     return [
         {"score": r.score, **r.payload}
         for r in results
@@ -232,11 +239,12 @@ def search_knowledge(query: str, limit: int = 3) -> list[dict]:
 def search_crowd_reports(query: str, limit: int = 5) -> list[dict]:
     """Semantic search in crowd_reports."""
     vector = embed_text(query)
-    results = _get_qdrant().search(
+    response = _get_qdrant().query_points(
         collection_name="crowd_reports",
-        query_vector=vector,
+        query=vector,
         limit=limit,
     )
+    results = response.points
     return [
         {"score": r.score, **r.payload}
         for r in results

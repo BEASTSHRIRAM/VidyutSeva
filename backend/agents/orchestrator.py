@@ -107,14 +107,20 @@ class Orchestrator:
         )
 
         # Determine diagnosis type from the analysis
+        # Convert any structured parts/list to a single string before lowercasing
+        if isinstance(outage_analysis, list):
+            outage_analysis_str = " ".join(str(part) for part in outage_analysis)
+        else:
+            outage_analysis_str = str(outage_analysis)
+
         outage_found = any(
-            keyword in outage_analysis.lower()
+            keyword in outage_analysis_str.lower()
             for keyword in ["active outage", "outage found", "outages_found\": 1",
                             "outages_found\": 2", "outages_found\": 3"]
         )
         if outage_found:
             diagnosis_type = "area_outage"
-        elif "crowd" in outage_analysis.lower() and "report" in outage_analysis.lower():
+        elif "crowd" in outage_analysis_str.lower() and "report" in outage_analysis_str.lower():
             diagnosis_type = "crowd_reported"
         else:
             diagnosis_type = "building_issue"

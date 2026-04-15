@@ -22,6 +22,7 @@ export const getOutages = (status) =>
   fetchJSON(`/outages${status ? `?status=${status}` : ''}`);
 export const getActiveOutages = (area) =>
   fetchJSON(`/outages/active${area ? `?area=${area}` : ''}`);
+export const getLiveOutages = () => fetchJSON('/api/live-outages');
 export const createOutage = (data) =>
   fetchJSON('/outages', { method: 'POST', body: JSON.stringify(data) });
 export const updateOutage = (id, data) =>

@@ -6,11 +6,11 @@ based on outage data and historical context using ReAct reasoning.
 import os
 import json
 from agentscope.agent import ReActAgent
-from agentscope.model import OpenAIChatModel
-from agentscope.formatter import OpenAIChatFormatter
+from agentscope.model import GeminiChatModel
+from agentscope.formatter import GeminiChatFormatter
 from agentscope.memory import InMemoryMemory
-from agentscope.tool import Toolkit, ToolResponse, TextBlock
-from agentscope.message import Msg
+from agentscope.tool import Toolkit, ToolResponse
+from agentscope.message import Msg, TextBlock
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -163,16 +163,17 @@ def create_diagnosis_agent() -> ReActAgent:
     toolkit.register_tool_function(get_historical_restoration_time)
     toolkit.register_tool_function(get_bescom_contact_info)
 
-    model = OpenAIChatModel(
-        model_name="gpt-4o",
-        api_key=os.getenv("OPENAI_API_KEY"),
+    model = GeminiChatModel(
+        model_name="gemini-2.5-flash-lite",
+        api_key=os.getenv("GEMINI_API_KEY"),
+        stream=False,
     )
 
     agent = ReActAgent(
         name="DiagnosisAgent",
         sys_prompt=SYSTEM_PROMPT,
         model=model,
-        formatter=OpenAIChatFormatter(),
+        formatter=GeminiChatFormatter(),
         toolkit=toolkit,
         memory=InMemoryMemory(),
     )

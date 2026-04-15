@@ -9,3 +9,8 @@ python-dotenv
 pydantic
 apscheduler
 agentscope
+langgraph
+groq
+psycopg[binary]
+psycopg2-binary
+twikit

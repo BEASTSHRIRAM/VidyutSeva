@@ -1,0 +1,23 @@
+[project]
+name = "backend"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "supabase",
+    "google-genai",
+    "qdrant-client",
+    "firecrawl",
+    "httpx",
+    "python-dotenv",
+    "pydantic",
+    "apscheduler",
+    "agentscope",
+    "langgraph",
+    "groq",
+    "psycopg[binary]>=3.3.3",
+    "requests>=2.33.1",
+]
