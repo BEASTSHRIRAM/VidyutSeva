@@ -1,10 +1,10 @@
-# ⚡ VidyutSeva: AI-Powered Power Outage Companion
+# VidyutSeva: AI-Powered Power Outage Companion
 
 **VidyutSeva** is a sophisticated, citizen-centric platform designed to solve the notification and transparency gap during electricity outages in Bangalore. By replacing static IVR systems with **Voice-AI agents** and real-time **social signal ingestion**, VidyutSeva provides citizens with instant, accurate, and localized outage information.
 
 ---
 
-## 🚀 Key Features
+## Key Features
 
 *   **Live Outage Ecosystem**: An interactive map dashboard providing a unified view of official BESCOM reports and crowdsourced Twitter signals.
 *   **AI Voice interface**: Integrated with **Vapi**, providing a LLM-driven voice experience for citizens to report issues and receive status updates in natural language.
@@ -19,7 +19,7 @@
 
 ---
 
-## 🏗️ System Architecture
+##  System Architecture
 
 ```mermaid
 graph TD
@@ -49,7 +49,7 @@ graph TD
 
 ---
 
-## 🛠️ Tech Stack
+##  Tech Stack
 
 ### Backend
 *   **Framework**: FastAPI (Python 3.12+)
@@ -66,7 +66,7 @@ graph TD
 
 ---
 
-## 📂 Project Structure
+##  Project Structure
 
 ```text
 ├── backend/
@@ -86,7 +86,7 @@ graph TD
 
 ---
 
-## ⚙️ Getting Started
+##  Getting Started
 
 ### Backend Setup
 1.  Navigate to the backend directory:
@@ -119,7 +119,7 @@ graph TD
 
 ---
 
-## 🔑 Environment Variables
+## Environment Variables
 
 The project requires several API keys to function fully. Copy `backend/.env.example` to `backend/.env` and provide:
 
@@ -132,5 +132,5 @@ The project requires several API keys to function fully. Copy `backend/.env.exam
 
 ---
 
-## 📝 License
+##  License
 Proprietary. Developed for Bangalore Citizen Support.
