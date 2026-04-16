@@ -12,7 +12,7 @@ VidyutSeva is a sophisticated, citizen-centric platform designed to solve the no
     *   **Location Agent**: Precise extraction of neighborhoods and landmarks from unstructured speech/text.
     *   **Outage Agent**: Semantic and relational lookup across official records and historical logs.
     *   **Diagnosis Agent**: Generates actionable advice and estimated restoration times.
-    *   **Escalation Agent**: Detects hardware faults (transformers, cables) and automatically dispatches the nearest lineman via outbound Vapi calls.
+    *   **Escalation Agent**: Takes complaints through calls and chats and Detects hardware faults (transformers, cables) and automatically dispatches the nearest lineman via outbound Vapi calls.
 *   **Real-time Ingestion**:
     *   **BESCOM Scraper**: Automated extraction of planned maintenance data via Firecrawl.
     *   **Twitter/X Sentinel**: Real-time monitoring of citizen complaints using RapidAPI and Groq-powered LLM parsing.
