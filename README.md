@@ -1,4 +1,4 @@
-# VidyutSeva: AI-Powered Power Outage Companion
+# VidyutSeva: Revolutionizing Power Grid Management with AI Agents
 
 VidyutSeva is a sophisticated, citizen-centric platform designed to solve the notification and transparency gap during electricity outages in Bangalore. By replacing static IVR systems with Voice-AI agents and real-time social signal ingestion, VidyutSeva provides citizens with instant, accurate, and localized outage information.
 
