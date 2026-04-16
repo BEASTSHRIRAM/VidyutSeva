@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import './index.css';
 import DashboardStats from './components/DashboardStats';
 import OutageTable from './components/OutageTable';
@@ -7,7 +7,12 @@ import CallLog from './components/CallLog';
 import LiveHeatmap from './components/LiveHeatmap';
 import CrowdReports from './components/CrowdReports';
 import AlertSubscriptions from './components/AlertSubscriptions';
-import { testVoice, triggerScraper } from './api';
+import ChatPage from './components/ChatPage';
+import ComplaintBoard from './components/ComplaintBoard';
+import AdminDashboard from './components/AdminDashboard';
+import AuthModal from './components/AuthModal';
+import VapiWidget from './components/VapiWidget';
+import { testVoice, triggerScraper, getComplaints } from './api';
 
 const STEPS = [
   {
@@ -71,16 +76,16 @@ function LandingPage({ onNavigate }) {
         </h1>
         <p className="hero-subtitle">
           VidyutSeva replaces unreliable IVR systems with an AI agent that
-          checks real BESCOM data and tells you whether your outage is
-          area-wide or building-specific.
+          checks real BESCOM data — and auto-dispatches linemen for hardware faults.
         </p>
         <div className="hero-actions">
-          <button className="btn btn-primary" onClick={() => onNavigate('dashboard')}>
-            Open Dashboard
+          <button className="btn btn-primary" onClick={() => onNavigate('chat')}>
+            Chat with AI Agent
           </button>
-          <a href="#how-it-works" className="btn btn-secondary">
-            Learn How It Works
-          </a>
+          <VapiWidget />
+          <button className="btn btn-secondary" onClick={() => onNavigate('complaints')}>
+            Community Reports
+          </button>
         </div>
 
         <div className="hero-stats">
@@ -89,16 +94,16 @@ function LandingPage({ onNavigate }) {
             <div className="hero-stat-label">Bangalore Areas Covered</div>
           </div>
           <div className="hero-stat">
-            <div className="hero-stat-value">3</div>
-            <div className="hero-stat-label">ReAct Agents Working</div>
+            <div className="hero-stat-value">4</div>
+            <div className="hero-stat-label">ReAct Agents Running</div>
           </div>
           <div className="hero-stat">
             <div className="hero-stat-value">&lt;10s</div>
             <div className="hero-stat-label">Average Response Time</div>
           </div>
           <div className="hero-stat">
-            <div className="hero-stat-value">24/7</div>
-            <div className="hero-stat-label">Always Available</div>
+            <div className="hero-stat-value">15</div>
+            <div className="hero-stat-label">Linemen on Roster</div>
           </div>
         </div>
       </section>
@@ -154,15 +159,15 @@ function LandingPage({ onNavigate }) {
           Stop guessing. Start knowing.
         </h2>
         <p className="section-subtitle">
-          Access the admin dashboard to manage outages, view citizen reports,
-          and monitor the AI agent pipeline in real time.
+          Chat with our 4-agent pipeline, report issues, upvote critical faults,
+          and track BESCOM's auto-dispatched linemen in real time.
         </p>
         <div className="hero-actions">
-          <button className="btn btn-primary" onClick={() => onNavigate('dashboard')}>
-            Open Dashboard
+          <button className="btn btn-primary" onClick={() => onNavigate('chat')}>
+            Chat with AI Agent
           </button>
-          <button className="btn btn-dark" onClick={() => onNavigate('test')}>
-            Test Voice Agent
+          <button className="btn btn-dark" onClick={() => onNavigate('complaints')}>
+            View Community Reports
           </button>
         </div>
       </section>
@@ -401,8 +406,116 @@ function TestPage() {
   );
 }
 
+function ComplaintsPage({ user, token }) {
+  const [complaints, setComplaints] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [area, setArea] = useState('');
+
+  const fetchComplaints = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await getComplaints({ area: area || undefined, sort: 'upvotes', limit: 50 });
+      setComplaints(data || []);
+    } catch (err) {
+      console.error('Failed to load complaints:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [area]);
+
+  useEffect(() => { fetchComplaints(); }, [fetchComplaints]);
+
+  return (
+    <div className="dashboard">
+      <div className="dashboard-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <h1>Community Reports</h1>
+          <p>Citizen-reported issues sorted by community upvotes. Hardware faults are auto-escalated to linemen.</p>
+        </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <input
+            className="form-input"
+            placeholder="Filter by area…"
+            value={area}
+            onChange={(e) => setArea(e.target.value)}
+            style={{ width: 180, marginBottom: 0 }}
+          />
+          <button className="btn btn-secondary btn-sm" onClick={fetchComplaints}>Filter</button>
+        </div>
+      </div>
+      {loading
+        ? <div style={{ textAlign: 'center', padding: 48, color: 'var(--charcoal)' }}>Loading reports…</div>
+        : <ComplaintBoard complaints={complaints} onRefresh={fetchComplaints} user={user} token={token} />
+      }
+    </div>
+  );
+}
+
 export default function App() {
   const [page, setPage] = useState('landing');
+  const [user, setUser] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('vs_user')); } catch { return null; }
+  });
+  const [token, setToken] = useState(() => localStorage.getItem('vs_token') || null);
+  const [showAuth, setShowAuth] = useState(false);
+
+  const handleLoginSuccess = (u) => {
+    setUser(u);
+    setToken(localStorage.getItem('vs_token'));
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('vs_token');
+    localStorage.removeItem('vs_user');
+    setUser(null);
+    setToken(null);
+  };
+
+  // Chat page renders full-screen with its own layout (no shared nav)
+  if (page === 'chat') {
+    return (
+      <div style={{ position: 'relative' }}>
+        <button
+          onClick={() => setPage('landing')}
+          style={{
+            position: 'fixed', top: 16, left: 16, zIndex: 100,
+            background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)',
+            color: 'rgba(255,255,255,0.6)', borderRadius: 10, padding: '6px 14px',
+            fontSize: 13, cursor: 'pointer', backdropFilter: 'blur(12px)',
+          }}
+        >← Back</button>
+        <ChatPage />
+      </div>
+    );
+  }
+
+  // Admin dashboard also full-screen
+  if (page === 'admin') {
+    if (!user || user.role !== 'admin') {
+      return (
+        <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          flexDirection: 'column', gap: 16, fontFamily: 'Inter, sans-serif', background: '#f5f4ed' }}>
+          <div style={{ fontSize: 40 }}>🔒</div>
+          <h2 style={{ fontFamily: "'Playfair Display', serif", color: '#141413' }}>Admin Access Only</h2>
+          <p style={{ color: '#87867f' }}>Please login with an admin account.</p>
+          <button className="btn btn-primary" onClick={() => setShowAuth(true)}>Login</button>
+          <button className="btn btn-secondary" onClick={() => setPage('landing')}>← Back</button>
+          {showAuth && <AuthModal onClose={() => setShowAuth(false)} onLoginSuccess={handleLoginSuccess} />}
+        </div>
+      );
+    }
+    return (
+      <div style={{ position: 'relative' }}>
+        <button
+          onClick={() => setPage('landing')}
+          style={{ position: 'fixed', top: 16, left: 16, zIndex: 100,
+            background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(0,0,0,0.12)',
+            color: '#6b6b68', borderRadius: 10, padding: '6px 14px', fontSize: 13, cursor: 'pointer' }}
+        >← Back</button>
+        <AdminDashboard user={user} token={token} />
+      </div>
+    );
+  }
 
   return (
     <>
@@ -410,48 +523,40 @@ export default function App() {
       <nav className="nav">
         <div className="nav-inner">
           <div className="nav-brand">
-            <span
-              className="nav-brand-name"
-              style={{ cursor: 'pointer' }}
-              onClick={() => setPage('landing')}
-            >
+            <span className="nav-brand-name" style={{ cursor: 'pointer' }} onClick={() => setPage('landing')}>
               VidyutSeva
             </span>
             <span className="nav-brand-tag">Bangalore</span>
           </div>
           <div className="nav-links">
-            <button
-              className={`nav-link ${page === 'landing' ? 'active' : ''}`}
-              onClick={() => setPage('landing')}
-            >
-              Home
-            </button>
-            <button
-              className={`nav-link ${page === 'dashboard' ? 'active' : ''}`}
-              onClick={() => setPage('dashboard')}
-            >
-              Dashboard
-            </button>
-            <button
-              className={`nav-link ${page === 'test' ? 'active' : ''}`}
-              onClick={() => setPage('test')}
-            >
-              Test Agent
-            </button>
-            <button
-              className="nav-cta"
-              onClick={() => setPage('dashboard')}
-            >
-              Get Started
-            </button>
+            <button className={`nav-link ${page === 'landing' ? 'active' : ''}`} onClick={() => setPage('landing')}>Home</button>
+            <button className={`nav-link ${page === 'chat' ? 'active' : ''}`} onClick={() => setPage('chat')}>AI Chat</button>
+            <button className={`nav-link ${page === 'complaints' ? 'active' : ''}`} onClick={() => setPage('complaints')}>Reports</button>
+            <button className={`nav-link ${page === 'dashboard' ? 'active' : ''}`} onClick={() => setPage('dashboard')}>Dashboard</button>
+            {user?.role === 'admin' && (
+              <button className={`nav-link ${page === 'admin' ? 'active' : ''}`} onClick={() => setPage('admin')}
+                style={{ color: '#c96442', fontWeight: 600 }}>Admin ⚡</button>
+            )}
+            {user ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 13, color: 'var(--charcoal)' }}>{user.name || user.phone}</span>
+                <button className="btn btn-secondary btn-sm" onClick={handleLogout}>Logout</button>
+              </div>
+            ) : (
+              <button className="nav-cta" onClick={() => setShowAuth(true)}>Login</button>
+            )}
           </div>
         </div>
       </nav>
 
+      {/* Auth Modal */}
+      {showAuth && <AuthModal onClose={() => setShowAuth(false)} onLoginSuccess={handleLoginSuccess} />}
+
       {/* Pages */}
-      {page === 'landing' && <LandingPage onNavigate={setPage} />}
-      {page === 'dashboard' && <DashboardPage />}
-      {page === 'test' && <TestPage />}
+      {page === 'landing'    && <LandingPage onNavigate={setPage} />}
+      {page === 'dashboard'  && <DashboardPage />}
+      {page === 'test'       && <TestPage />}
+      {page === 'complaints' && <ComplaintsPage user={user} token={token} />}
     </>
   );
 }

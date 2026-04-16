@@ -95,7 +95,7 @@ app.add_middleware(
     ],
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=["*", "Authorization"],
 )
 
 # Register routers
@@ -104,6 +104,8 @@ from routers.dashboard import router as dashboard_router
 from routers.scraper import router as scraper_router
 from routers.crowd_reports import router as reports_router
 from routers.alerts import router as alerts_router
+from routers.auth import router as auth_router
+from routers.complaints import router as complaints_router
 from voice.vapi_handler import router as voice_router
 
 app.include_router(outages_router)
@@ -111,6 +113,8 @@ app.include_router(dashboard_router)
 app.include_router(scraper_router)
 app.include_router(reports_router)
 app.include_router(alerts_router)
+app.include_router(auth_router)
+app.include_router(complaints_router)
 app.include_router(voice_router)
 
 

@@ -85,7 +85,7 @@ def fetch_tweets_node(state: TwitterPollerState) -> TwitterPollerState:
 
 async def _fetch_tweets_rapidapi() -> list[dict]:
     rapid_key = os.getenv("RAPIDAPI_KEY", "")
-    rapid_host = os.getenv("RAPIDAPI_HOST", "twitter241.p.rapidapi.com")
+    rapid_host = os.getenv("RAPIDAPI_HOST")
 
     if not rapid_key or rapid_key.startswith("your_"):
         logger.warning("[RapidAPI] RAPIDAPI_KEY not set. Scraping disabled.")
